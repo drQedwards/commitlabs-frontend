@@ -2,13 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { FiBarChart2, FiChevronLeft, FiHome, FiMenu, FiPlus, FiSettings } from 'react-icons/fi';
-import {
-  canActivateNavItem,
-  type BoundaryFailure,
-  type ShellAuthInput,
-} from '@/lib/shell/navigationBoundary';
 
 const STORAGE_KEY = 'commitlabs:sidebar-collapsed';
 
@@ -19,11 +14,10 @@ const navigation = [
   { href: '/settings', label: 'Settings', icon: FiSettings },
 ] as const;
 
-export function AppSidebar({ auth }: { auth?: ShellAuthInput }) {
+export function AppSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [blockReason, setBlockReason] = useState<BoundaryFailure | null>(null);
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(STORAGE_KEY) === 'true');
@@ -33,16 +27,6 @@ export function AppSidebar({ auth }: { auth?: ShellAuthInput }) {
   useEffect(() => {
     if (hydrated) window.localStorage.setItem(STORAGE_KEY, String(collapsed));
   }, [collapsed, hydrated]);
-
-  const handleNavClick = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
-    const decision = canActivateNavItem(href, auth ?? {});
-    if (decision.ok) {
-      setBlockReason(null);
-      return;
-    }
-    event.preventDefault();
-    setBlockReason(decision);
-  };
 
   return (
     <aside
@@ -72,7 +56,6 @@ export function AppSidebar({ auth }: { auth?: ShellAuthInput }) {
                 aria-current={active ? 'page' : undefined}
                 aria-label={collapsed ? label : undefined}
                 title={collapsed ? label : undefined}
-                onClick={(event) => handleNavClick(event, href)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
                   active ? 'bg-cyan-400/15 text-cyan-300' : 'text-white/70 hover:bg-white/10'
                 }`}
@@ -83,17 +66,6 @@ export function AppSidebar({ auth }: { auth?: ShellAuthInput }) {
             );
           })}
         </nav>
-
-        {blockReason ? (
-          <p
-            role="status"
-            data-testid="shell-nav-blocked"
-            data-error-code={blockReason.code}
-            className="mt-4 px-2 text-xs text-amber-300"
-          >
-            {blockReason.message}
-          </p>
-        ) : null}
       </div>
     </aside>
   );
