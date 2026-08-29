@@ -1,0 +1,85 @@
+# Validates Wave / campaign PR shape without checking out fork code.
+# Requires [#NNNN] title and Fixes|Closes|Resolves #NNNN in the body.
+
+name: PR hygiene
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches:
+      - main
+      - master
+
+permissions:
+  pull-requests: write
+  issues: read
+
+jobs:
+  hygiene:
+    name: Title and closer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title and issue closer
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title || '';
+            const body = pr.body || '';
+            const problems = [];
+
+            const titleIssue = title.match(/^\[#(\d+)\]\s+\S/);
+            if (!titleIssue) {
+              problems.push('Title must start with `[#NNNN] ` plus a summary.');
+            }
+
+            const closer = body.match(/\b(Fixes|Closes|Resolves)\s+#(\d+)/i);
+            const refs = body.match(/\bRefs\s+#(\d+)/i);
+            if (!closer && !refs) {
+              problems.push('Body must contain `Fixes #NNNN` or at least `Refs #NNNN`.');
+            } else if (titleIssue && closer && titleIssue[1] !== closer[2]) {
+              problems.push(`Title cites #${titleIssue[1]} but closer cites #${closer[2]}.`);
+            }
+
+            if (!closer && refs) {
+              problems.push('`Refs #` cites the issue but will not close it. Add `Fixes #NNNN` before merge if this PR resolves the issue.');
+            }
+
+            if (pr.head.repo.full_name !== pr.base.repo.full_name && pr.head.ref === 'master') {
+              problems.push('Fork PRs should use a topic branch, not `master`.');
+            }
+
+            const marker = '<!-- pr-hygiene -->';
+            const summary = problems.length
+              ? `${marker}\n### PR hygiene\n` + problems.map((p) => `- ${p}`).join('\n')
+              : `${marker}\nPR hygiene passed.`;
+
+            try {
+              const comments = await github.paginate(
+                github.rest.issues.listComments,
+                { owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number },
+              );
+              const existing = comments.find((c) => c.body && c.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body: summary,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: summary,
+                });
+              }
+            } catch (error) {
+              core.warning(`Could not comment on PR: ${error.message}`);
+            }
+
+            const blocking = problems.filter((p) => !p.startsWith('`Refs #`'));
+            if (blocking.length) {
+              core.setFailed(blocking.join('; '));
+            }

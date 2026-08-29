@@ -1,0 +1,44 @@
+# After a Wave PR merges, remind that GitHub close != Drips Resolved.
+
+name: Wave follow-up
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
+
+permissions:
+  pull-requests: write
+
+jobs:
+  note:
+    name: Post merge reminder
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment Wave next steps
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const closer = body.match(/\b(Fixes|Closes|Resolves)\s+#(\d+)/i);
+            const refs = body.match(/\bRefs\s+#(\d+)/i);
+            const issue = closer ? `#${closer[2]}` : refs ? `#${refs[1]}` : 'the cited Wave issue';
+            const closedByKeyword = Boolean(closer);
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: [
+                'Merged.',
+                '',
+                closedByKeyword
+                  ? `GitHub should close ${issue} from the \`${closer[0]}\` keyword.`
+                  : `${issue} was only cited with \`Refs\`. It will stay open unless a maintainer closes it.`,
+                'Drips Wave still needs the maintainer to mark the Wave card **Resolved**. Merge does not flip points by itself.',
+                'Contributor: confirm assignment and the linked PR at https://www.drips.network/wave',
+              ].join('\n'),
+            });
