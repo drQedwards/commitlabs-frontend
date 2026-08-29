@@ -59,7 +59,8 @@ export function AppSidebar({ auth }: { auth?: ShellAuthInput }) {
           onClick={() => setCollapsed((value) => !value)}
           className="mb-5 flex h-10 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 hover:text-white"
         >
-          {collapsed ? <FiMenu aria-hidden="true" /> : <FiChevronLeft aria-hidden="true" />}
+          {/* Decorative only; name comes from aria-label on the button. */}
+          {collapsed ? <FiMenu aria-hidden="true" focusable="false" /> : <FiChevronLeft aria-hidden="true" focusable="false" />}
         </button>
 
         <nav aria-label="Primary" className="space-y-2">
@@ -70,15 +71,15 @@ export function AppSidebar({ auth }: { auth?: ShellAuthInput }) {
                 key={href}
                 href={href}
                 aria-current={active ? 'page' : undefined}
-                aria-label={collapsed ? label : undefined}
                 title={collapsed ? label : undefined}
                 onClick={(event) => handleNavClick(event, href)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
                   active ? 'bg-cyan-400/15 text-cyan-300' : 'text-white/70 hover:bg-white/10'
                 }`}
               >
-                <Icon aria-hidden="true" />
-                {!collapsed && <span>{label}</span>}
+                {/* Decorative glyph. Accessible name is always the text label below. */}
+                <Icon aria-hidden="true" focusable="false" />
+                <span className={collapsed ? 'sr-only' : undefined}>{label}</span>
               </Link>
             );
           })}
