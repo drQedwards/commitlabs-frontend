@@ -22,7 +22,10 @@ describe('AppSidebar', () => {
       'aria-expanded',
       'false',
     );
-    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute('title', 'Analytics');
+    const analytics = screen.getByRole('link', { name: 'Analytics' });
+    expect(analytics).toHaveAttribute('title', 'Analytics');
+    expect(analytics).not.toHaveAttribute('aria-label');
+    expect(analytics.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     expect(localStorage.getItem('commitlabs:sidebar-collapsed')).toBe('true');
   });
 
